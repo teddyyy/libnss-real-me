@@ -2,7 +2,7 @@ libnss-real-me
 ==============
 
 The libnss-real-me name service switch module resolves the name
-"real.me" to the IP address for connecting to the Internet.
+"realme.localhost" to the IP address for connecting to the Internet.
 
 install
 --------------

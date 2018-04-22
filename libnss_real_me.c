@@ -4,7 +4,6 @@
 #include <string.h>
 #include <netdb.h>
 #include <nss.h>
-
 #include <arpa/inet.h>
 
 #define SERVER4 "v4.ifconfig.co"
@@ -22,10 +21,9 @@
         "Connection: close\r\n" \
         "\r\n"
 
-
 #define ALIGN(x) (((x+sizeof(void*)-1)/sizeof(void*))*sizeof(void*))
 
-inline size_t ADDRLEN (int proto) {
+static inline size_t ADDRLEN (int proto) {
     return proto == AF_INET6 ? sizeof(struct in6_addr) : sizeof(struct in_addr);
 }
 
@@ -45,17 +43,20 @@ connect_server(int family)
 		ret = getaddrinfo(SERVER6, "http", &hints, &res);
 
 	if (ret != 0)
-		return -1;
+		return ret;
 
 	if (family == AF_INET)
 		sock = socket(AF_INET, SOCK_STREAM, 0);
 	else
 		sock = socket(AF_INET6, SOCK_STREAM, 0);
 
+	if (sock < 0)
+		return sock;
+
 	ret = connect(sock, res->ai_addr, res->ai_addrlen);
 	if (ret < 0) {
 		close(sock);
-		return -1;
+		return ret;
 	}
 
 	freeaddrinfo(res);
@@ -77,7 +78,7 @@ find_real_my_addr(int family, char *address) {
 
 	sock = connect_server(family);
 	if (sock < 0)
-		return -1;
+		return sock;
 
 	if (family == AF_INET)
 		ret = send(sock, HTTP_QUERY4, strlen(HTTP_QUERY4), 0);
@@ -86,16 +87,16 @@ find_real_my_addr(int family, char *address) {
 
 	if (ret < 0) {
 		disconnect_server(sock);
-		return -1;
+		return ret;
 	}
 
 	ret = recv(sock, response, BUFSIZ, 0);
 	if (ret < 0) {
 		disconnect_server(sock);
-		return -1;
+		return ret;
 	}
 
-	if ((strncmp(response, "HTTP/1.1 200 OK", 15) == 0)) {
+	if (!strncmp(response, "HTTP/1.1 200 OK", 15)) {
                 ip = strstr(response, "\r\n\r\n");
                 if (ip) {
                         sscanf(ip, "\r\n\r\n%s", address);
@@ -107,7 +108,6 @@ find_real_my_addr(int family, char *address) {
                 disconnect_server(sock);
                 return -1;
         }
-
 
 	disconnect_server(sock);
 
@@ -198,7 +198,7 @@ _nss_real_me_gethostbyname2_r(const char *name,
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	if (!strcmp(name, "me.localhost")) {
+	if (!strcmp(name, "realme.localhost")) {
 		return fill_real_my_addr(name,
 					 af,
 				         result,
