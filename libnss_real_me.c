@@ -99,7 +99,11 @@ find_real_my_addr(int family, char *address) {
 	if (!strncmp(response, "HTTP/1.1 200 OK", 15)) {
                 ip = strstr(response, "\r\n\r\n");
                 if (ip) {
-                        sscanf(ip, "\r\n\r\n%s", address);
+			ret = sscanf(ip, "\r\n\r\n%s", address);
+			if (ret == EOF) {
+				disconnect_server(sock);
+				return -1;
+			}
                 } else {
                         disconnect_server(sock);
                         return -1;
